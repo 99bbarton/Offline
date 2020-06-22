@@ -1,0 +1,10 @@
+#include "JobConfig/reco/mcdigis-trig_CRY.fcl"
+services.TFileService.fileName: "nts.owner.CRY-cosmic-general-mix-low-threshs.version.sequencer.root"
+outputs.Output.fileName: "mcs.owner.CRY-cosmic-general-mix-low-threshs.version.sequencer.art"
+
+
+//The below lines reduce the threshold for CRV coincidences to correspond to the threshold (8) listed in crv_params for 2025 and 2030
+physics.producers.CrvCoincidence.PEthresholds			 : [  8  ,     8 ,     8 ,     8 ,     8 ,     8 ,     8 ,    8 ,    8 ,    8  ,    8  ,    8 ,    8 ,    8 ,    8  ,    8  ,     8 ,    8  ,     8 ,     8 ,     8 ,     8 ]
+physics.producers.CrvCoincidence.useFourLayers                   : [false,  false,  false,  false,  false,  false,  false,  true,  false,  false,  false,  true,  true,  true,   true,   true,   true,   true,  false,  false,  false,  false]
+physics.producers.CrvCoincidence.adjacentPulseTimeDifferences    : [  10 ,    10 ,    10 ,    10 ,    10 ,    10 ,    10 ,   10 ,   10 ,    10 ,    10 ,   10 ,   10 ,   10 ,    10 ,    10 ,    10 ,    10 ,    10 ,    10 ,    10 ,    10 ] //ns
+

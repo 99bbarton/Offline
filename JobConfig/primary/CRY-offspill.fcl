@@ -64,4 +64,6 @@ services.TFileService.fileName        : "nts.owner.CRY-cosmic-general.version.se
 outputs.Output.fileName     	      : "dig.owner.CRY-cosmic-general.version.sequencer.art"
 
 
-
+//Modifications for processing for background estimates in Spring 2020
+physics.producers.CrvPhotons.scintillationYield : 11588 //Use PE yield for year 2025
+physics.analyzers.digiCompressionCheck.checkTrackerDuplicateSteps: false
