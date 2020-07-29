@@ -82,6 +82,7 @@ namespace mu2e
                                      earliestHitTime, earliestHitPos, mostLikelySimParticle);
   }
 
+
   unsigned long CrvHelper::GetSiPMID(const GeomHandle<CosmicRayShield> &CRS, 
                                      mu2e::CRSScintillatorBarIndex crvBarIndex, 
                                      int SiPMNumber)
@@ -122,6 +123,7 @@ namespace mu2e
     counterNumber=(SiPMID&_crvCounterNumberMask)>>_crvCounterNumberShift;
   }
 
+
   void CrvHelper::GetCrvCounterInfo(const GeomHandle<CosmicRayShield> &CRS, 
                                     mu2e::CRSScintillatorBarIndex crvBarIndex,
                                     int &sectorNumber, int &moduleNumber, int &layerNumber, int &counterNumber)
@@ -155,6 +157,7 @@ namespace mu2e
     return crvCounter.getPosition();
   }
 
+
   CLHEP::Hep3Vector CrvHelper::GetCrvCounterPos(const GeomHandle<CosmicRayShield> &CRS, 
                                      mu2e::CRSScintillatorBarIndex crvBarIndex)
   {
@@ -163,4 +166,3 @@ namespace mu2e
   }
 
 } // end namespace mu2e
-

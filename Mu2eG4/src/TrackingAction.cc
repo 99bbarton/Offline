@@ -3,10 +3,6 @@
 // If Mu2e needs many different user tracking actions, they
 // should be called from this class.
 //
-// $Id: TrackingAction.cc,v 1.46 2014/08/29 22:37:41 genser Exp $
-// $Author: genser $
-// $Date: 2014/08/29 22:37:41 $
-//
 // Original author Rob Kutschke
 //
 // Notes:
@@ -50,6 +46,7 @@
 #include "globals.hh"
 #include "G4Event.hh"
 #include "G4Ions.hh"
+#include "G4IonTable.hh"
 #include "G4RunManager.hh"
 #include "G4EventManager.hh"
 #include "G4SteppingManager.hh"
@@ -62,12 +59,12 @@ using namespace std;
 
 namespace mu2e {
 
-  TrackingAction::TrackingAction(const fhicl::ParameterSet& pset,
+  TrackingAction::TrackingAction(const Mu2eG4Config::Top& conf,
                                  Mu2eG4SteppingAction * steppingAction,
                                  unsigned stageOffset,
                                  const Mu2eG4TrajectoryControl& trajectoryControl,
                                  const Mu2eG4ResourceLimits& lim):
-    _debugList(pset.get<std::vector<int> >("debug.trackingActionEventList", std::vector<int>())),
+    _debugList(conf.debug().trackingActionEventList()),
     _physVolHelper(0),
     _timer(),
     _trajectories(nullptr),
@@ -78,14 +75,14 @@ namespace mu2e {
     _saveTrajectoryMomentumCut(trajectoryControl.saveTrajectoryMomentumCut()),
     _mcTrajectoryMinSteps(trajectoryControl.mcTrajectoryMinSteps()),
     _nKilledByFieldPropagator(0),
-    _rangeToIgnore(pset.get<double>("physics.rangeToIgnore")),
+    _rangeToIgnore(conf.physics().rangeToIgnore()),
     _steppingAction(steppingAction),
     _stageOffset(stageOffset),
     _processInfo(0),
-    _printTrackTiming(pset.get<bool>("debug.printTrackTiming")),
+    _printTrackTiming(conf.debug().printTrackTiming()),
     _spHelper(),
     _primaryHelper(),
-    _stepLimitKillerVerbose(pset.get<bool>("debug.stepLimitKillerVerbose"))
+    _stepLimitKillerVerbose(conf.debug().stepLimitKillerVerbose())
   {
 
     if ( _stepLimitKillerVerbose && (G4Threading::G4GetThreadId() <= 0) ) {
@@ -97,16 +94,16 @@ namespace mu2e {
              << G4endl;
     }
 
-}
-    
-// Receive information that has a lifetime of a run.
-void TrackingAction::beginRun(const PhysicalVolumeHelper* physVolHelper,
-                              PhysicsProcessInfo* processInfo,
-                              CLHEP::Hep3Vector const& mu2eOrigin ){
+  }
+
+  // Receive information that has a lifetime of a run.
+  void TrackingAction::beginRun(const PhysicalVolumeHelper* physVolHelper,
+                                PhysicsProcessInfo* processInfo,
+                                CLHEP::Hep3Vector const& mu2eOrigin ){
     _physVolHelper = physVolHelper;
     _processInfo = processInfo;
     _mu2eOrigin    =  mu2eOrigin;
-}
+  }
 
   void TrackingAction::PreUserTrackingAction(const G4Track* trk){
 
@@ -119,21 +116,21 @@ void TrackingAction::beginRun(const PhysicalVolumeHelper* physVolHelper,
     G4VUserTrackInformation* tui = trk->GetUserInformation();
     if (tui) {
       if ( trackingVerbosityLevel > 0 ) {
-        G4cout << __func__ 
+        G4cout << __func__
                << " the track was labeled as " << tui->GetType() << G4endl;
       }
       ProcessCode cCode = Mu2eG4UserHelpers::findCreationCode(trk);
       if (cCode == ProcessCode(ProcessCode::muMinusCaptureAtRest)) {
         ti->setMuCapCode(ProcessCode::findByName((tui->GetType()).c_str()));
         if ( trackingVerbosityLevel > 0 ) {
-          G4cout << __func__ << " set UserTrackInformation  muCapCode " 
+          G4cout << __func__ << " set UserTrackInformation  muCapCode "
                  << ti->muCapCode()  << G4endl;
         }
       }
     }
     else {
       if ( trackingVerbosityLevel > 1 ) {
-        G4cout << __func__ 
+        G4cout << __func__
                << " the track was not labeled" << G4endl;
       }
 
@@ -144,8 +141,8 @@ void TrackingAction::beginRun(const PhysicalVolumeHelper* physVolHelper,
       size_t delPosition = creatorModelName.find_last_of("_");
 
       if ( trackingVerbosityLevel > 0 ) {
-        G4cout << __func__ 
-               << " full creatorModelName " 
+        G4cout << __func__
+               << " full creatorModelName "
                << creatorModelName << G4endl;
       }
 
@@ -155,26 +152,26 @@ void TrackingAction::beginRun(const PhysicalVolumeHelper* physVolHelper,
         ProcessCode cCode = Mu2eG4UserHelpers::findCreationCode(trk);
 
         if ( trackingVerbosityLevel > 0 ) {
-          G4cout << __func__ 
-                 << " Mu2e used model name: " 
+          G4cout << __func__
+                 << " Mu2e used model name: "
                  << modelName << G4endl;
 
-          G4cout << __func__ 
-                 << " Creator Process name from model: " 
+          G4cout << __func__
+                 << " Creator Process name from model: "
                  << creatorModelName.substr(0,delPosition) << G4endl;
 
-          G4cout << __func__ 
-                 << " Creator Process name from trk:   " 
+          G4cout << __func__
+                 << " Creator Process name from trk:   "
                  << ProcessCode::name(cCode) << G4endl;
         }
 
         // we label the track using the UserTrackInformation as above
- 
+
         if (cCode == ProcessCode(ProcessCode::muMinusCaptureAtRest)) {
           ti->setMuCapCode(ProcessCode::findByName(modelName.c_str()));
 
           if ( trackingVerbosityLevel > 0 ) {
-            G4cout << __func__ << " set UserTrackInformation  muCapCode " 
+            G4cout << __func__ << " set UserTrackInformation  muCapCode "
                    << ti->muCapCode()  << G4endl;
           }
 
@@ -189,14 +186,14 @@ void TrackingAction::beginRun(const PhysicalVolumeHelper* physVolHelper,
 
     // saveSimParticle must be called before controlTrajectorySaving.
     // but after attaching the  user track information
-    
+
     saveSimParticleStart(trk);
-      
+
     Mu2eG4UserHelpers::controlTrajectorySaving(trk, _sizeLimit, _currentSize,
                                                _saveTrajectoryMomentumCut);
 
     _steppingAction->BeginOfTrack();
-            
+
     if ( !_debugList.inList() ) return;
     Mu2eG4UserHelpers::printTrackInfo( trk, "Start new Track: ", _transientMap,
                                        _timer, _mu2eOrigin);
@@ -204,10 +201,11 @@ void TrackingAction::beginRun(const PhysicalVolumeHelper* physVolHelper,
     _timer.reset();
     _timer.start();
 
-}
-    
 
-void TrackingAction::PostUserTrackingAction(const G4Track* trk){
+  }
+
+
+  void TrackingAction::PostUserTrackingAction(const G4Track* trk){
 
     // This is safe even if it was never started.
     _timer.stop();
@@ -227,30 +225,30 @@ void TrackingAction::PostUserTrackingAction(const G4Track* trk){
     Mu2eG4UserHelpers::printTrackInfo( trk, "End Track:       ", _transientMap,
                                        _timer, _mu2eOrigin, true, _printTrackTiming);
 
-}
+  }
 
-    
-namespace { // to use compressSimParticleCollection
+
+  namespace { // to use compressSimParticleCollection
     struct KeepAll {
       bool operator[](cet::map_vector_key ) const { return true; }
     };
-}
-    
-    
-void TrackingAction::beginEvent(const art::Handle<SimParticleCollection>& inputSimHandle,
-                                const art::Handle<MCTrajectoryCollection>& inputTraj,
-                                const SimParticleHelper& spHelper,
-                                const SimParticlePrimaryHelper& primaryHelper,
-                                MCTrajectoryCollection&  trajectories,
-                                SimParticleRemapping& simsRemap) {
-      
+  }
+
+
+  void TrackingAction::beginEvent(const art::Handle<SimParticleCollection>& inputSimHandle,
+                                  const art::Handle<MCTrajectoryCollection>& inputTraj,
+                                  const SimParticleHelper& spHelper,
+                                  const SimParticlePrimaryHelper& primaryHelper,
+                                  MCTrajectoryCollection&  trajectories,
+                                  SimParticleRemapping& simsRemap) {
+
     _currentSize          = 0;
     _overflowSimParticles = false;
     _nKilledByFieldPropagator = 0;
     _spHelper             = &spHelper;
     _primaryHelper        = &primaryHelper;
     _trajectories         = &trajectories;
-      
+
     if(inputSimHandle.isValid()) {
       // We do not compress anything here, but use the call to reseat the pointers
       // while copying the inputs to _transientMap.
@@ -269,7 +267,7 @@ void TrackingAction::beginEvent(const art::Handle<SimParticleCollection>& inputS
         simsRemap[oldSim] = newSim;
       }
     }
-      
+
     if(inputTraj.isValid()) {
       // Read trajectories from the previous simulation step,  reseat the pointers.
       for(const auto& i : *inputTraj) {
@@ -286,23 +284,23 @@ void TrackingAction::beginEvent(const art::Handle<SimParticleCollection>& inputS
         newTraj.points() = tr.points();
       }
     }
-    
-}//beginEvent
 
-    
-void TrackingAction::endEvent(SimParticleCollection& persistentSims ){
-    
+  }//beginEvent
+
+
+  void TrackingAction::endEvent(SimParticleCollection& persistentSims ){
+
     Mu2eG4UserHelpers::checkCrossReferences(true,true,_transientMap);
     persistentSims.insert( _transientMap.begin(), _transientMap.end() );
     _transientMap.clear();
-      
-    if ( !_debugList.inList() ) return;
-}
 
-    
-// Save start of track info.
-void TrackingAction::saveSimParticleStart(const G4Track* trk){
-      
+    if ( !_debugList.inList() ) return;
+  }
+
+
+  // Save start of track info.
+  void TrackingAction::saveSimParticleStart(const G4Track* trk){
+
     G4int trackingVerbosityLevel = fpTrackingManager->GetVerboseLevel();
 
     _currentSize += 1;
@@ -315,14 +313,14 @@ void TrackingAction::saveSimParticleStart(const G4Track* trk){
       }
       return;
     }
-      
+
     const key_type kid = _spHelper->particleKeyFromG4TrackID(trk->GetTrackID());
-      
+
     const int parentId = trk->GetParentID();
-      
+
     art::Ptr<GenParticle> genPtr;
     art::Ptr<SimParticle> parentPtr;
-      
+
     if(parentId == 0) { // primary
       genPtr = _primaryHelper->genParticlePtr(trk->GetTrackID());
       parentPtr = _primaryHelper->simParticlePrimaryPtr(trk->GetTrackID());
@@ -334,34 +332,34 @@ void TrackingAction::saveSimParticleStart(const G4Track* trk){
     // Find the physics process that created this track.
     ProcessCode creationCode = Mu2eG4UserHelpers::findCreationCode(trk);
     // we shall replace creationCode with muCapCode from UserTrackInformation if needed/present
-      
+
     if (creationCode==ProcessCode(ProcessCode::muMinusCaptureAtRest)) {
 
       if ( trackingVerbosityLevel > 0 ) {
-        G4cout << __func__ 
+        G4cout << __func__
                << " particle created by " << creationCode.name()
                << " will try to replace the creation code "
                << G4endl;
 
         G4VUserTrackInformation* tui = trk->GetUserInformation();
         if (tui) {
-          G4cout << __func__ 
-                 << " the track is labeled as " << tui->GetType() 
+          G4cout << __func__
+                 << " the track is labeled as " << tui->GetType()
                  << G4endl;
-          G4cout << __func__ 
-                 << " muCapCode is: " 
+          G4cout << __func__
+                 << " muCapCode is: "
                  << (dynamic_cast<UserTrackInformation*>(tui))->muCapCode()
                  << G4endl;
         }
       }
 
-      ProcessCode utic = 
+      ProcessCode utic =
         (dynamic_cast<UserTrackInformation*>(trk->GetUserInformation()))->muCapCode();
       if (utic!=ProcessCode(ProcessCode::unknown)) {
         creationCode=utic;
       }
     }
-      
+
     if ( trackingVerbosityLevel > 0 ) {
       G4cout << __func__
              << " saving particle "
@@ -393,27 +391,40 @@ void TrackingAction::saveSimParticleStart(const G4Track* trk){
 
     PDGCode::type ppdgId = static_cast<PDGCode::type>(trk->GetDefinition()->GetPDGEncoding());
 
-    // here we inspect unusual excited ions
-
-    if (ppdgId>PDGCode::G4Threshold) {
-
-      int excLevel = ppdgId%10;
-
-      if ( (excLevel > 1) && (trackingVerbosityLevel > 0) ) {
-
-        const G4ParticleDefinition* pDef = trk->GetDefinition();
-
-        G4cout << __func__ 
-               << " Warning: Unusual excited ion: " << ppdgId;
-        pDef->DumpTable();
-        G4cout << " Excitation energy: " 
-               << dynamic_cast<const G4Ions*>(pDef)->GetExcitationEnergy() << G4endl
-               << " produced by " << creationCode 
-               << G4endl;
-      }
-
+    // printing ions
+    if ( trackingVerbosityLevel > 0 && ppdgId>PDGCode::G4Threshold ) {
+      G4cout << __func__ << " Ion pdgid:          "
+             << ppdgId
+             << G4endl;
+      const G4ParticleDefinition* pDef = trk->GetDefinition();
+      pDef->DumpTable();
+      // print data specific to ions
+      // Get excitation energy of nucleus
+      // Charge
+      // Get Isomer level (=0 for ground state)
+      const G4Ions* pG4Ion = dynamic_cast<const G4Ions*>(pDef);
+      G4int flbi = pG4Ion->GetFloatLevelBaseIndex();
+      G4cout << __func__ << " Ion specific data:  "
+             << pG4Ion->GetExcitationEnergy()
+             << ", " << pG4Ion->GetPDGCharge()
+             << ", " << pG4Ion->GetIsomerLevel()
+             << ", " << flbi
+        //   << ", " << static_cast<G4int>(pG4Ion->GetFloatLevelBase())
+             << ", " << G4String(G4Ions::FloatLevelBaseChar(G4Ions::FloatLevelBase(flbi)))
+        //   << ", " << G4String(G4Ions::FloatLevelBaseChar(pG4Ion->GetFloatLevelBase()))
+             << G4endl;
+      Mu2eG4UserHelpers::printTrackInfo( trk, " Ion:          ", _transientMap,
+                                         _timer, _mu2eOrigin);
     }
-    
+
+    // extracting info specific to ions
+    SimParticle::IonDetail ion;
+    if ( ppdgId>PDGCode::G4Threshold ) {
+      const G4ParticleDefinition* pDef = trk->GetDefinition();
+      ion.excitationEnergy = dynamic_cast<const G4Ions*>(pDef)->GetExcitationEnergy();
+      ion.floatLevelBaseIndex = dynamic_cast<const G4Ions*>(pDef)->GetFloatLevelBaseIndex();
+    }
+
     _transientMap.insert(std::make_pair(kid,SimParticle( kid,
                                                          _stageOffset,
                                                          parentPtr,
@@ -425,24 +436,52 @@ void TrackingAction::saveSimParticleStart(const G4Track* trk){
                                                          trk->GetProperTime(),
                                                          _physVolHelper->index(trk),
                                                          trk->GetTrackStatus(),
-                                                         creationCode)));
+                                                         creationCode,
+                                                         ion)));
 
     // If this track has a parent, tell the parent about this track.
     if ( parentPtr.isNonnull() ){
       map_type::iterator i(_transientMap.find(SimParticleCollection::key_type(parentPtr.key())));
       if ( i == _transientMap.end() ){
         throw cet::exception("RANGE")
-          << "Could not find parent SimParticle in PreUserTrackingAction.  id: "
+          << "Could not find parent SimParticle in " << __func__ << ".  id: "
           << parentPtr.key()
           << "\n";
       }
       i->second.addDaughter(_spHelper->particlePtr(trk));
-    }
-}//saveSimParticleStart
 
-    
-// Append end of track information to the existing SimParticle.
-void TrackingAction::saveSimParticleEnd(const G4Track* trk){
+      // // print parent of an ion
+      //
+      // int parPDGId = i->second.pdgId();
+      // if ( ppdgId >PDGCode::G4Threshold ) {
+      //   G4String pName = "";
+      //   if ( parPDGId >PDGCode::G4Threshold ) {
+      //     G4cout << __func__ << " Parent base ion pdgid: " << parPDGId-parPDGId%10 << G4endl;
+      //     G4ParticleDefinition* ion = G4IonTable::GetIonTable()->GetIon(parPDGId-parPDGId%10);
+      //     pName = (ion) ? ion->GetParticleName() : "Unknown";
+      //   } else {
+      //     pName = G4ParticleTable::GetParticleTable()->FindParticle(parPDGId)->GetParticleName();
+      //   }
+      //   G4cout << __func__ << " Ion parent with approximate name : "
+      //          << i->second.id()
+      //          << ", " << parPDGId
+      //          << ", " << pName
+      //          << ", created by " << i->second.creationCode().name()
+      //          << ", stopped by " << i->second.stoppingCode().name()
+      //          << G4endl;
+      // }
+      // // print if parent is an ion
+      // if ( parPDGId)) {
+      //   G4cout << __func__ << " Ion daughter pdgid: " << ppdgId << G4endl;
+      //   Mu2eG4UserHelpers::printTrackInfo( trk, "ion daughter: ", _transientMap,
+      //                                      _timer, _mu2eOrigin);
+      // }
+    }
+  }//saveSimParticleStart
+
+
+  // Append end of track information to the existing SimParticle.
+  void TrackingAction::saveSimParticleEnd(const G4Track* trk){
 
     if( _sizeLimit>0 && _currentSize>=_sizeLimit ) return;
 
@@ -467,14 +506,14 @@ void TrackingAction::saveSimParticleEnd(const G4Track* trk){
     if ( _stepLimitKillerVerbose && trVerbosity < 1 ) trVerbosity = 1;
 
     if (pname == "Transportation" &&
-      Mu2eG4UserHelpers::isTrackKilledByFieldPropagator(trk, trVerbosity)) {
+        Mu2eG4UserHelpers::isTrackKilledByFieldPropagator(trk, trVerbosity)) {
       pname = G4String("FieldPropagator");
       if ( !(trk->GetDefinition()->GetPDGEncoding() == 11 || // electron & proton codes hardcoded for now
              trk->GetDefinition()->GetPDGEncoding() == 2212 ) ||
-          G4LossTableManager::Instance()->
-          GetRange(trk->GetDefinition(),
-                   trk->GetKineticEnergy(),
-                   trk->GetStep()->GetPreStepPoint()->GetMaterialCutsCouple())>_rangeToIgnore) {
+           G4LossTableManager::Instance()->
+           GetRange(trk->GetDefinition(),
+                    trk->GetKineticEnergy(),
+                    trk->GetStep()->GetPreStepPoint()->GetMaterialCutsCouple())>_rangeToIgnore) {
         // count non electrons/protons or electrons/protons which have a range which is likely to make them travel
         ++_nKilledByFieldPropagator;
       }
@@ -520,13 +559,36 @@ void TrackingAction::saveSimParticleEnd(const G4Track* trk){
                           trk->GetTrackLength()
                           );
 
-    if (trackingVerbosityLevel > 0) {
+    // the following is to establish for debugging if the parent pdgid to see if it is an ion
+    // const int parentId = trk->GetParentID();
+    // art::Ptr<SimParticle> parentPtr;
+    // int parPDGId = 0;
+    // if(parentId == 0) { // primary
+    //   parentPtr = _primaryHelper->simParticlePrimaryPtr(trk->GetTrackID());
+    // }
+    // else { // not a primary
+    //   parentPtr = _spHelper->particlePtrFromG4TrackID(parentId);
+    // }
+    // if ( parentPtr.isNonnull() ){
+    //   map_type::iterator i(_transientMap.find(SimParticleCollection::key_type(parentPtr.key())));
+    //   if ( i == _transientMap.end() ){
+    //     throw cet::exception("RANGE")
+    //       << "Could not find parent SimParticle in " << __func__ << ".  id: "
+    //       << parentPtr.key()
+    //       << "\n";
+    //   }
+    //   parPDGId = i->second.pdgId();
+    // }
+
+    if ( trackingVerbosityLevel > 0
+         // || trk->GetDefinition()->GetPDGEncoding()>PDGCode::G4Threshold
+        ) {
       G4int prec = G4cout.precision(15);
       G4cout << __func__
              << " particle "
              << i->second.pdgId() << ", "
              << trk->GetParticleDefinition()->GetParticleName()
-             << " stopped by " << stoppingCode << ", " << pname
+             << " stopped by " << stoppingCode // << ", " << pname
              << " totE deposit " << fixed << trk->GetStep()->GetTotalEnergyDeposit()
              << " NonIonE deposit " << fixed << trk->GetStep()->GetNonIonizingEnergyDeposit()
              << " in " << trk->GetVolume()->GetName()
@@ -543,14 +605,27 @@ void TrackingAction::saveSimParticleEnd(const G4Track* trk){
       G4cout << __func__
              << " step length " << trk->GetStepLength()
              << ", track length " << trk->GetTrackLength()
+             << ", step number " << trk->GetCurrentStepNumber()
+             << ", created by " << Mu2eG4UserHelpers::findCreationCode(trk)
              << G4endl;
+      if ( trk->GetDefinition()->GetPDGEncoding()>PDGCode::G4Threshold ) {
+        const G4Ions* pG4Ion = dynamic_cast<const G4Ions*>(trk->GetDefinition());
+        G4int flbi = pG4Ion->GetFloatLevelBaseIndex();
+        G4cout << __func__ << " Ion "
+               << pG4Ion->GetParticleName()
+               << " with excitaion energy: "
+               << pG4Ion->GetExcitationEnergy()
+               << " with float level base: "
+               << G4String(G4Ions::FloatLevelBaseChar(G4Ions::FloatLevelBase(flbi))) << " " << flbi
+               << G4endl;
+      }
       G4cout.precision(prec);
     }
   }//saveSimParticleEnd
-    
-// If the track passes the cuts needed to store the trajectory object, then store
-// it in the output data product.  For efficiency, the store uses a swap.
-void TrackingAction::swapTrajectory(const G4Track* trk){
+
+  // If the track passes the cuts needed to store the trajectory object, then store
+  // it in the output data product.  For efficiency, the store uses a swap.
+  void TrackingAction::swapTrajectory(const G4Track* trk){
 
     key_type kid(_spHelper->particleKeyFromG4TrackID(trk->GetTrackID()));
 
@@ -593,7 +668,7 @@ void TrackingAction::swapTrajectory(const G4Track* trk){
     // So far the trajectory holds the starting point of each step.
     // Add the end point of the last step.
     traj.points().emplace_back( trk->GetPosition()-_mu2eOrigin, trk->GetGlobalTime(), trk->GetKineticEnergy() );
-    
+
   }//swapTrajectory
 
 

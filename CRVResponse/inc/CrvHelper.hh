@@ -6,7 +6,7 @@
 // $Id: $
 // $Author: ehrlich $
 // $Date: 2014/08/07 01:33:40 $
-// 
+//
 // Original Author: Ralf Ehrlich
 
 #include "MCDataProducts/inc/CrvDigiMCCollection.hh"
@@ -18,9 +18,9 @@
 #include "DataProducts/inc/CRSScintillatorBarIndex.hh"
 #include "GeometryService/inc/GeomHandle.hh"
 
-namespace mu2e 
+namespace mu2e
 {
-  class CrvHelper 
+  class CrvHelper
   {
     public:
     //CrvRecoPulse to MC match function
@@ -69,8 +69,8 @@ namespace mu2e
     static std::string                   GetSectorName(const GeomHandle<CosmicRayShield> &CRS, int sectorNumber);
     static int                           GetSectorType(const GeomHandle<CosmicRayShield> &CRS, int sectorNumber);
     static CLHEP::Hep3Vector             GetCrvCounterPos(const GeomHandle<CosmicRayShield> &CRS,
-                                                          unsigned long SiPMID); 
-    static CLHEP::Hep3Vector             GetCrvCounterPos(const GeomHandle<CosmicRayShield> &CRS, 
+                                                unsigned long SiPMID);
+    static CLHEP::Hep3Vector             GetCrvCounterPos(const GeomHandle<CosmicRayShield> &CRS,
                                                           mu2e::CRSScintillatorBarIndex crvBarIndex);
 
     private:

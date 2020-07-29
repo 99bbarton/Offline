@@ -3,59 +3,33 @@ BEGIN_PROLOG
 # flags to keep track of which hits to use
 # Reconstruct hits: this produces StrawHits and ComboHits
 
-# flag hits from low-energy electrons (Compton electrons, delta rays, ...)
-# First, configure the clusters
-# Original 2-level clusterer
-TLTClusterer : { 
-    MaxNIterations : 10
-    TimeDifference : 25.0
-    MaxDistance : 100.0
-    HitDistance : 5.0
-    SeedDistance : 25.0
-    MaxTimeDifference : 40.0
-    BackgroundMask : []
-    SignalMask : ["TimeSelection", "EnergySelection","RadiusSelection"]
-}
-# Bertrand's faster version
-TNTClusterer : { 
-    MaxNIterations : 10
-    TimeDifference : 25.0
-    MaxDistance : 100.0
-    HitDistance : 5.0
-    SeedDistance : 25.0
-    MaxTimeDifference : 40.0
-    BackgroundMask : []
-    SignalMask : ["TimeSelection", "EnergySelection","RadiusSelection"]
-}
-
-
 # now trigger-specific versions; these make deep copies
 TTmakeSH : {
-    module_type : StrawHitReco
-    FilterHits : true
+    module_type             : StrawHitReco
+    FilterHits              : true
     WriteStrawHitCollection : false
-    EventWindowMarkerLabel : "EWMProducer"
+    EventWindowMarkerLabel  : "EWMProducer"
 }
 # combine hits in a panel
 TTmakePH : {
-    module_type : CombineStrawHits
-    TestFlag : false
-    TestRadius : true
-    ComboHitCollection : "TTmakeSH"
+    module_type             : CombineStrawHits
+    TestFlag                : false
+    TestRadius              : true
+    ComboHitCollection      : "TTmakeSH"
 }
 TTmakeSHUCC : {
-    module_type : StrawHitReco
-    UseCalorimeter : true
-    FilterHits : true
+    module_type             : StrawHitReco
+    UseCalorimeter          : true
+    FilterHits              : true
     WriteStrawHitCollection : false
-    EventWindowMarkerLabel : "EWMProducer"
+    EventWindowMarkerLabel  : "EWMProducer"
 }
 # combine hits in a panel
 TTmakePHUCC : {
-    module_type : CombineStrawHits
-    TestFlag : false
-    TestRadius : true
-    ComboHitCollection : "TTmakeSHUCC"
+    module_type             : CombineStrawHits
+    TestFlag                : false
+    TestRadius              : true
+    ComboHitCollection      : "TTmakeSHUCC"
 }
 # stereo version: defer the radius test
 TTSmakePH : {
@@ -65,29 +39,18 @@ TTSmakePH : {
 # combine panel hits in a station
 TTmakeSTH : {
     @table::makeSTH
-    TestFlag : false
+    TestFlag           : false
     ComboHitCollection : "TTSmakePH"
 }
 TTflagBkgHits : {
-    module_type : FlagBkgHits
-    ComboHitCollection : "TTmakePH"
-    StrawHitCollection : "TTmakeSH"
-    BkgMVA : { MVAWeights : "TrkHitReco/data/BkgMVAPanel.weights.xml" }
-    MVANames : [ "HitRho", "HitRhoSpread", "ClusterRho", "ZMin", "ZMax", "ZGap", "NPlanes", "PlaneFraction","NHits" ] 
-    TLTClusterer : { @table::TLTClusterer 
-	TestFlag : false}
-    TNTClusterer : { @table::TNTClusterer
-	TestFlag : false}
-    # use TNTClusterer
-    Clusterer : 2
-    FilterOutput : true
-    FlagComboHits : true
-    FlagStrawHits : false 
-    ComboHitCollection : "TTmakePH"
-    BkgMVA : {
-	MVAWeights : "TrkHitReco/data/BkgMVAPanel.weights.xml"
-    }
+  @table::FlagBkgHits
+  ComboHitCollection   : "TTmakePH"
+  StrawHitCollection   : "TTmakeSH"
+  FilterOutput         : true
+  FlagComboHits        : true
+  FlagStrawHits        : false
 }
+
 # stereo versions
 TTSflagBkgHits : {
     @table::TTflagBkgHits
@@ -107,7 +70,8 @@ TrkHitRecoTrigger : {
 	        ComboHitCollection : TTmakePHUCC		
 	}
     }
-    # sequences
+    
+    # SEQUENCES
     # production sequence to prepare hits for tracking
     sequences: {
 	TTprepareHits     : [ TTmakeSH, TTmakePH,TTflagBkgHits ]
